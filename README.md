@@ -2,6 +2,8 @@
 
 Arquitectura v2 · 9 de octubre de 2026 · MVP para ocho inmobiliarias
 
+Código abierto bajo [AGPL-3.0-only](LICENSE). [Estado de las pruebas automáticas](https://github.com/javierdicamillo/CRM-LAB/actions/workflows/crm.yml).
+
 **Dos productos independientes: ocho instalaciones de CRM-LAB, cada una en un VPS propio, y un PORTAL-LAB común en un noveno VPS.** El mismo código de CRM se distribuye a las ocho inmobiliarias. Sus bases, usuarios, archivos privados y credenciales permanecen separados.
 
 PORTAL-LAB implementa el contrato público de CRM-LAB: recibe únicamente fichas autorizadas y devuelve las consultas a su inmobiliaria. Conserva un catálogo local para no depender de ocho servidores en cada búsqueda.

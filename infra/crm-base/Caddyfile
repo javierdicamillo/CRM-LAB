@@ -1,0 +1,15 @@
+# Base temporal por IP. HTTPS se habilita cuando el DNS apunte al VPS.
+:80 {
+    header {
+        -Server
+        X-Content-Type-Options nosniff
+        X-Robots-Tag "noindex, nofollow"
+    }
+    handle /healthz {
+        respond "infraestructura disponible" 200
+    }
+    handle {
+        header Retry-After 3600
+        respond "CRM-LAB: entorno en preparacion. La aplicacion todavia no esta disponible." 503
+    }
+}

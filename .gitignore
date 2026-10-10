@@ -1,0 +1,22 @@
+# Credenciales y configuración local
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencias y compilación
+node_modules/
+.next/
+dist/
+coverage/
+
+# Datos operativos que no pertenecen al repositorio
+backups/
+uploads/
+*.dump
+*.log
+secrets/
+infra/private/
+*.tsbuildinfo
+CRM-LAB/private-uploads/

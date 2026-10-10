@@ -1,0 +1,9 @@
+[Unit]
+Description=Copia local PostgreSQL CRM-LAB (respaldo externo pendiente)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/crm-lab-backup
+UMask=0077

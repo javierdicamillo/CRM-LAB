@@ -1,0 +1,50 @@
+name: crm-lab
+services:
+  db:
+    image: ${POSTGRES_IMAGE:?Falta referencia con digest de PostgreSQL}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: crm_lab
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - database
+    shm_size: 128mb
+    mem_limit: 768m
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres -d crm_lab']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+  caddy:
+    image: ${CADDY_IMAGE:?Falta referencia con digest de Caddy}
+    restart: unless-stopped
+    environment:
+      CRM_DOMAIN: ${CRM_DOMAIN:-}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 128m
+    security_opt:
+      - no-new-privileges:true
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+networks:
+  database:
+    internal: true
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,2 @@
+necesito integrar en un solo aplicativo web con multiclientes, un CRM con un portal de publicaciones inmobiliarias.debe ser de código abierto y gestionarse desde github con varios usuarios, en una primer instancia se alojara en Hostinger de ser posible en un sitio node.js. Evalúa la factibilidad, el stack y toma como base las funcionalidades que ofrece tokko bróker.
+Documenta todo para que pueda exponerse el proceso de forma resumida en un grupo de laboratorio de IA en fase inicial.

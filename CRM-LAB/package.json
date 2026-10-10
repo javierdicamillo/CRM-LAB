@@ -1,0 +1,39 @@
+{
+  "name": "crm-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build && esbuild scripts/worker.ts --bundle --platform=node --external:pg --external:sharp --format=esm --outfile=dist/worker.mjs",
+    "start": "next start --hostname 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "migrate": "tsx scripts/migrate.ts"
+  },
+  "dependencies": {
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "better-auth": "1.7.7",
+    "pg": "^8.16.3",
+    "drizzle-orm": "0.45.4",
+    "zod": "^4.1.12",
+    "sharp": "0.35.5",
+    "lucide-react": "^0.468.0",
+    "archiver": "^7.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/pg": "^8.15.6",
+    "@types/archiver": "^6.0.3",
+    "typescript": "^5.9.3",
+    "tsx": "^4.20.6",
+    "esbuild": "^0.25.12",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  }
+}

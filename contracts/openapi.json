@@ -1,0 +1,1378 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CRM-LAB y PORTAL-LAB — Protocolo LAB",
+    "version": "1.0.0-draft.1",
+    "description": "Borrador de contrato, 2026-10-09. PORTAL-LAB sirve esta API. Ocho CRM independientes inician las conexiones. La agencia se obtiene del token y nunca del cuerpo. No es una API desplegada. Ver docs/03-contrato-y-sincronizacion.md."
+  },
+  "servers": [
+    {
+      "url": "https://portal-lab.example.invalid",
+      "description": "Marcador documental; sustituir al desplegar."
+    }
+  ],
+  "security": [
+    {
+      "AgencyToken": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Compatibility",
+      "description": "Negociación de protocolo."
+    },
+    {
+      "name": "Listings",
+      "description": "Publicaciones propias y reconciliación."
+    },
+    {
+      "name": "Media",
+      "description": "Derivados públicos autorizados."
+    },
+    {
+      "name": "Inquiries",
+      "description": "Entrega de consultas de la agencia autenticada."
+    }
+  ],
+  "paths": {
+    "/v1/capabilities": {
+      "get": {
+        "operationId": "getCapabilities",
+        "summary": "Consultar protocolo y límites",
+        "tags": [
+          "Compatibility"
+        ],
+        "responses": {
+          "200": {
+            "description": "Capacidades de la instancia del portal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Capabilities"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credencial ausente, inválida o revocada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Conexión suspendida o permiso insuficiente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Cuota excedida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Segundos antes de reintentar."
+              }
+            }
+          },
+          "503": {
+            "description": "Servicio temporalmente no disponible; reintentar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/listings": {
+      "get": {
+        "operationId": "listOwnListingIndex",
+        "summary": "Consultar índice propio, incluyendo bajas",
+        "tags": [
+          "Listings"
+        ],
+        "responses": {
+          "200": {
+            "description": "Índice paginado de la conexión.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credencial ausente, inválida o revocada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Conexión suspendida o permiso insuficiente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Cuota excedida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Segundos antes de reintentar."
+              }
+            }
+          },
+          "503": {
+            "description": "Servicio temporalmente no disponible; reintentar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Cursor opaco. null en respuesta indica fin; volver a empezar para pendientes."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          }
+        ]
+      }
+    },
+    "/v1/listings/{source_listing_id}": {
+      "parameters": [
+        {
+          "name": "source_listing_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "put": {
+        "operationId": "putPublicListing",
+        "summary": "Publicar, actualizar o retirar una oferta",
+        "tags": [
+          "Listings"
+        ],
+        "responses": {
+          "200": {
+            "description": "Revisión aceptada o repetición idéntica.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingReceipt"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credencial ausente, inválida o revocada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Conexión suspendida o permiso insuficiente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revisión menor o misma revisión con contenido diferente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Cuota excedida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Segundos antes de reintentar."
+              }
+            }
+          },
+          "503": {
+            "description": "Servicio temporalmente no disponible; reintentar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListingUpdate"
+              }
+            }
+          }
+        },
+        "description": "Identidad compuesta por agencia autenticada e ID de origen. Publicar requiere medios ready propios. Una baja mantiene su revisión. No devolver ni almacenar campos privados."
+      }
+    },
+    "/v1/media": {
+      "post": {
+        "operationId": "uploadPublicMedia",
+        "summary": "Subir una imagen pública y recodificarla",
+        "tags": [
+          "Media"
+        ],
+        "responses": {
+          "200": {
+            "description": "Reintento idempotente ya procesado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaReceipt"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Medio validado y listo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaReceipt"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credencial ausente, inválida o revocada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Conexión suspendida o permiso insuficiente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Misma clave idempotente con contenido distinto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Imagen excede cuota o dimensiones.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Cuota excedida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Segundos antes de reintentar."
+              }
+            }
+          },
+          "503": {
+            "description": "Servicio temporalmente no disponible; reintentar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Clave persistente por subida dentro de la conexión."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/webp": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "description": "Máximo propuesto 10 MB y 25 megapíxeles. El portal valida, recodifica y elimina EXIF. No se aceptan URLs arbitrarias. La imagen solo se sirve públicamente si está referenciada por una ficha activa."
+      }
+    },
+    "/v1/inquiries": {
+      "get": {
+        "operationId": "getOwnInquiries",
+        "summary": "Recoger consultas de la agencia autenticada",
+        "tags": [
+          "Inquiries"
+        ],
+        "responses": {
+          "200": {
+            "description": "Entrega al menos una vez; el cursor no es ACK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InquiryPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credencial ausente, inválida o revocada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Conexión suspendida o permiso insuficiente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Cursor vencido; reiniciar recorrido y deduplicar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Cuota excedida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Segundos antes de reintentar."
+              }
+            }
+          },
+          "503": {
+            "description": "Servicio temporalmente no disponible; reintentar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Cursor opaco. null en respuesta indica fin; volver a empezar para pendientes."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          },
+          {
+            "name": "include_delivered",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Para recuperar una copia: incluye confirmadas todavía retenidas, durante 7 días."
+          }
+        ],
+        "description": "Pendientes hasta 30 días con alertas previas. Recorra todas las páginas y reinicie sin cursor al terminar. La consulta recibida se guarda durablemente en CRM antes de confirmar."
+      }
+    },
+    "/v1/inquiries/{inquiry_id}/ack": {
+      "parameters": [
+        {
+          "name": "inquiry_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "acknowledgeInquiry",
+        "summary": "Confirmar consulta guardada en el CRM",
+        "tags": [
+          "Inquiries"
+        ],
+        "responses": {
+          "200": {
+            "description": "Confirmación inicial o repetición coherente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AckReceipt"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credencial ausente, inválida o revocada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Conexión suspendida o permiso insuficiente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Consulta no encontrada en esta conexión.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Confirmación con identidad local contradictoria.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Cuota excedida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Segundos antes de reintentar."
+              }
+            }
+          },
+          "503": {
+            "description": "Servicio temporalmente no disponible; reintentar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AckRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reconcile": {
+      "post": {
+        "operationId": "reconcileActiveListings",
+        "summary": "Verificar manifiesto completo y renovar vigencia",
+        "tags": [
+          "Listings"
+        ],
+        "responses": {
+          "200": {
+            "description": "matched=true renueva 72 horas; false no renueva y devuelve diferencias.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconcileReceipt"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credencial ausente, inválida o revocada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Conexión suspendida o permiso insuficiente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Cuota excedida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Segundos antes de reintentar."
+              }
+            }
+          },
+          "503": {
+            "description": "Servicio temporalmente no disponible; reintentar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileRequest"
+              }
+            }
+          }
+        },
+        "description": "Comparar todos los IDs y revisiones activos propios. Un manifiesto incompleto no elimina registros. Las bajas se confirman con PUT y revisión superior."
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "AgencyToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Token opaco aleatorio y exclusivo de cada conexión. No es JWT obligatorio. El portal guarda su hash y resuelve la agencia, nunca confía en agency_id del cliente."
+      }
+    },
+    "schemas": {
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "Capabilities": {
+        "type": "object",
+        "properties": {
+          "portal_instance_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "protocol_versions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "max_active_listings": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "max_image_bytes": {
+            "type": "integer"
+          },
+          "server_time": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "portal_instance_id",
+          "protocol_versions",
+          "max_active_listings",
+          "max_image_bytes",
+          "server_time"
+        ],
+        "additionalProperties": false
+      },
+      "PublicListing": {
+        "type": "object",
+        "properties": {
+          "source_property_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 180
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000,
+            "description": "Texto plano público. Sin notas privadas."
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "sale",
+              "rent"
+            ]
+          },
+          "property_type": {
+            "type": "string",
+            "enum": [
+              "apartment",
+              "house",
+              "land",
+              "office",
+              "store",
+              "warehouse",
+              "other"
+            ]
+          },
+          "price": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string",
+                "pattern": "^[0-9]+(\\.[0-9]{1,2})?$"
+              },
+              "currency": {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$"
+              },
+              "period": {
+                "type": "string",
+                "enum": [
+                  "total",
+                  "month",
+                  "day"
+                ]
+              }
+            },
+            "required": [
+              "amount",
+              "currency",
+              "period"
+            ],
+            "additionalProperties": false
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "country_code": {
+                "type": "string",
+                "pattern": "^[A-Z]{2}$"
+              },
+              "region": {
+                "type": "string"
+              },
+              "city": {
+                "type": "string"
+              },
+              "neighborhood": {
+                "type": "string"
+              },
+              "public_address": {
+                "type": "string",
+                "description": "Solo dirección autorizada para publicación."
+              }
+            },
+            "required": [
+              "country_code",
+              "region",
+              "city"
+            ],
+            "additionalProperties": false
+          },
+          "area_m2": {
+            "type": "number",
+            "minimum": 0
+          },
+          "bedrooms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bathrooms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "media_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 30,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "source_property_id",
+          "title",
+          "description",
+          "operation",
+          "property_type",
+          "price",
+          "location",
+          "media_ids"
+        ],
+        "additionalProperties": false
+      },
+      "PublishedUpdate": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "published"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "listing": {
+            "$ref": "#/components/schemas/PublicListing"
+          }
+        },
+        "required": [
+          "status",
+          "revision",
+          "listing"
+        ],
+        "additionalProperties": false
+      },
+      "WithdrawnUpdate": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "withdrawn"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "status",
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "ListingUpdate": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/PublishedUpdate"
+          },
+          {
+            "$ref": "#/components/schemas/WithdrawnUpdate"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "status",
+          "mapping": {
+            "published": "#/components/schemas/PublishedUpdate",
+            "withdrawn": "#/components/schemas/WithdrawnUpdate"
+          }
+        }
+      },
+      "ListingReceipt": {
+        "type": "object",
+        "properties": {
+          "source_listing_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accepted_revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "published",
+              "withdrawn"
+            ]
+          },
+          "public_listing_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "source_listing_id",
+          "accepted_revision",
+          "status",
+          "public_listing_id"
+        ],
+        "additionalProperties": false
+      },
+      "IndexEntry": {
+        "type": "object",
+        "properties": {
+          "source_listing_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "published",
+              "withdrawn"
+            ]
+          }
+        },
+        "required": [
+          "source_listing_id",
+          "revision",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "IndexPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IndexEntry"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "MediaReceipt": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ready"
+            ]
+          }
+        },
+        "required": [
+          "media_id",
+          "sha256",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "Contact": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 40
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "email"
+            ]
+          },
+          {
+            "required": [
+              "phone"
+            ]
+          }
+        ]
+      },
+      "Inquiry": {
+        "type": "object",
+        "properties": {
+          "inquiry_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source_listing_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/Contact"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "PORTAL-LAB"
+            ]
+          },
+          "delivery_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "delivered"
+            ]
+          }
+        },
+        "required": [
+          "inquiry_id",
+          "source_listing_id",
+          "created_at",
+          "contact",
+          "message",
+          "source",
+          "delivery_status"
+        ],
+        "additionalProperties": false
+      },
+      "InquiryPage": {
+        "type": "object",
+        "properties": {
+          "portal_instance_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Inquiry"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "portal_instance_id",
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "AckRequest": {
+        "type": "object",
+        "properties": {
+          "crm_inquiry_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "crm_inquiry_id"
+        ],
+        "additionalProperties": false
+      },
+      "AckReceipt": {
+        "type": "object",
+        "properties": {
+          "inquiry_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "crm_inquiry_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "acknowledged_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "inquiry_id",
+          "crm_inquiry_id",
+          "acknowledged_at"
+        ],
+        "additionalProperties": false
+      },
+      "ManifestEntry": {
+        "type": "object",
+        "properties": {
+          "source_listing_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "source_listing_id",
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "ReconcileRequest": {
+        "type": "object",
+        "properties": {
+          "active_listings": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "$ref": "#/components/schemas/ManifestEntry"
+            },
+            "description": "Conjunto completo sin IDs repetidos. No es una página ni una petición de borrar."
+          }
+        },
+        "required": [
+          "active_listings"
+        ],
+        "additionalProperties": false
+      },
+      "ReconcileReceipt": {
+        "type": "object",
+        "properties": {
+          "matched": {
+            "type": "boolean"
+          },
+          "lease_expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "conflicting_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "matched",
+          "lease_expires_at",
+          "conflicting_ids"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

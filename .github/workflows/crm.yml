@@ -1,0 +1,30 @@
+name: CRM-LAB
+on:
+  push:
+    paths: ['CRM-LAB/**','contracts/**','.github/workflows/crm.yml']
+  pull_request:
+    paths: ['CRM-LAB/**','contracts/**','.github/workflows/crm.yml']
+permissions:
+  contents: read
+concurrency:
+  group: crm-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: CRM-LAB
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: CRM-LAB/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high

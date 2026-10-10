@@ -1,0 +1,13 @@
+services:
+  app-test:
+    image: crm-lab:0.1.0
+    env_file: ./secrets/app-test.env
+    init: true
+    networks: [default,database]
+    ports:
+      - '127.0.0.1:3001:3000'
+    volumes:
+      - ./uploads-test:/data/uploads
+    mem_limit: 768m
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]

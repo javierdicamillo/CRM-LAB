@@ -1,0 +1,12 @@
+{
+  "inquiry_id": "33333333-3333-4333-8333-333333333333",
+  "source_listing_id": "44444444-4444-4444-8444-444444444444",
+  "created_at": "2026-10-09T12:00:00Z",
+  "contact": {
+    "name": "Visitante ficticio",
+    "email": "demo@example.invalid"
+  },
+  "message": "Quisiera coordinar una visita de prueba.",
+  "source": "PORTAL-LAB",
+  "delivery_status": "pending"
+}

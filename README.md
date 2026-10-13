@@ -35,6 +35,10 @@ Ver la [entrega, pruebas y guía de uso](docs/09-entrega-crm-mvp.md) y el [regis
 
 La propuesta anterior de CRM con base multicliente compartida queda sustituida. Se conserva en el [histórico v1](docs/historico/v1/README.md). El pedido inicial permanece en Promptinicial.txt.
 
+## Desarrollo local · 13/10/2026
+
+PORTAL-LAB tiene ahora catálogo público, fichas, consultas y servidor del protocolo LAB, más vinculación opcional con la cartografía pública de Catastro de Neuquén. CRM-LAB permite consultar y guardar la nomenclatura de parcela, privada por defecto, y autorizar su publicación. Estos cambios son locales: no se han desplegado en `open-crm.tech` ni conectado a producción. Ver [implementación, pruebas y despliegue](PORTAL-LAB/README.md).
+
 ## Decisiones centrales
 
 - Una inmobiliaria por instalación CRM-LAB, con varios usuarios y sucursales.

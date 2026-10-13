@@ -1,0 +1,51 @@
+# Separate portal server. Do not launch this beside the CRM's Caddy on the same ports.
+name: portal-lab
+services:
+  db:
+    image: ${POSTGRES_IMAGE:?Definir imagen PostgreSQL 18 con digest}
+    environment:
+      POSTGRES_DB: portal_lab
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes: [postgres_data:/var/lib/postgresql]
+    networks: [database]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres -d portal_lab']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+  app:
+    image: portal-lab:0.1.0
+    env_file: ./secrets/app.env
+    restart: unless-stopped
+    init: true
+    networks: [default,database]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD,node,-e,"fetch('http://127.0.0.1:3100/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+  caddy:
+    image: ${CADDY_IMAGE:?Definir imagen Caddy con digest}
+    environment:
+      PORTAL_DOMAIN: ${PORTAL_DOMAIN:?Definir dominio del portal}
+    ports: ['80:80','443:443']
+    volumes: ['./Caddyfile:/etc/caddy/Caddyfile:ro','caddy_data:/data','caddy_config:/config']
+    restart: unless-stopped
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+networks:
+  database:
+    internal: true
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

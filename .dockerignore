@@ -1,0 +1,14 @@
+**/node_modules
+**/.next
+**/dist
+**/.local-db
+**/.env*
+**/private-uploads
+**/uploads
+**/secrets
+**/backups
+**/*.dump
+**/*.log
+**/*.tsbuildinfo
+infra/private
+.git

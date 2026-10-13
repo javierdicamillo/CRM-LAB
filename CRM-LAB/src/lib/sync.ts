@@ -32,6 +32,7 @@ async function negotiate() {
   const capabilities=z.object({portal_instance_id:z.uuid(),protocol_versions:z.array(z.string()),max_active_listings:z.number().int().positive()}).parse(await portal('/v1/capabilities'));
   if(capabilities.portal_instance_id!==config()!.instance)throw new Error('La identidad del portal no coincide con la configurada.');
   if(!capabilities.protocol_versions.some(v=>v==='v1'||v==='1'||v.startsWith('1.')))throw new Error('El portal no admite protocolo LAB v1.');
+  return capabilities.protocol_versions.includes('1.1');
 }
 async function remoteIndex() {
   const entries:z.infer<typeof indexEntry>[]=[];let cursor:string|null=null;const seen=new Set<string>();
@@ -65,10 +66,11 @@ async function safeReconcile() {
   await status({lastReconcile:new Date().toISOString(),leaseExpiresAt:receipt.lease_expires_at,reconciled:receipt.matched});
   return true;
 }
-async function sendJob(job:any) {
+async function sendJob(job:any,supportsCadastre:boolean) {
   const snapshot=job.payload;
   let body:any={status:snapshot.status,revision:snapshot.revision};
   if(snapshot.status==='published') {
+    if(snapshot.listing.cadastre&&!supportsCadastre)throw new PortalError(422);
     const mediaIds:string[]=[];
     for(const id of snapshot.photo_ids) {
       z.uuid().parse(id);const bytes=await readFile(path.join(process.env.UPLOAD_DIR!,`${id}.webp`));
@@ -103,7 +105,7 @@ export async function syncOnce() {
   const lock=await pool.connect();
   if(!(await lock.query('SELECT pg_try_advisory_lock(7249004) AS locked')).rows[0].locked){lock.release();return;}
   try {
-    await negotiate();
+    const supportsCadastre=await negotiate();
     const state=(await pool.query('SELECT data FROM sync_state WHERE id=1')).rows[0].data;
     if(state.paused)return;
     // Comprobar revisiones remotas antes de cualquier envío, también tras reiniciar/restaurar.
@@ -112,7 +114,7 @@ export async function syncOnce() {
     const failedOffers=new Set<string>();
     for(const job of jobs) {
       if(failedOffers.has(job.offer_id))continue;
-      try {await sendJob(job);}catch(error){
+      try {await sendJob(job,supportsCadastre);}catch(error){
         failedOffers.add(job.offer_id);
         const permanent=error instanceof PortalError&&[400,403,404,409,413,422].includes(error.status);
         const delay=Math.max(retryDelay(job.attempts),error instanceof PortalError?error.retryAfter:0);

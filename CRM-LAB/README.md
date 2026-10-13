@@ -38,3 +38,9 @@ Los 41 controles HTTP, cuatro pruebas unitarias, build, tipos y pruebas de fallo
 Despliegue y recuperación: [infraestructura](../infra/README.md) y [guía del piloto](../docs/09-entrega-crm-mvp.md). Datos, fotos, secretos y backups no pertenecen a Git. En el piloto todavía no hay un portal configurado: las publicaciones quedan en cola.
 
 La pantalla carga hasta 20.000 registros comerciales; agregar paginación antes de superar ese volumen. Fotos: hasta 30 por inmueble y 10 MB por archivo. Cada inmobiliaria tendrá su propio servidor y debe incorporarse gradualmente; este piloto no certifica la capacidad del conjunto de ocho agencias.
+
+## Cambios locales para PORTAL-LAB y Catastro
+
+Se agregó consulta de parcela por nomenclatura de 15 dígitos de Neuquén. El vínculo se comprueba contra DPCeIT al guardar y permanece privado por defecto. La autorización explícita permite publicarlo usando protocolo 1.1. No verifica titularidad ni unidades funcionales. Estos cambios todavía no están desplegados en el piloto.
+
+El Dockerfile ahora se construye desde la raíz del repositorio: `docker build -f CRM-LAB/Dockerfile -t crm-lab:0.2.0 .`, para incluir `contracts/cadastre.ts`. App y worker deben actualizarse juntos. El directorio de trabajo de la imagen sigue admitiendo `node dist/worker.mjs`.

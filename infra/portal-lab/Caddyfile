@@ -1,0 +1,13 @@
+{$PORTAL_DOMAIN} {
+  encode zstd gzip
+  request_body {
+    max_size 11MB
+  }
+  header {
+    -Server
+    Strict-Transport-Security "max-age=31536000"
+  }
+  reverse_proxy app:3100 {
+    header_up X-Real-IP {remote_host}
+  }
+}

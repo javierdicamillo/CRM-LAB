@@ -30,3 +30,16 @@ test('token privado no acepta vacío y compara valores completos',()=>{
 test('reintentos crecen y nunca superan quince minutos',()=>{
  assert.ok(retryDelay(3,.5)>retryDelay(1,.5));assert.ok(retryDelay(100,1)<=900);
 });
+
+test('referencia catastral privada se excluye; publicar requiere autorización y coincidencia',()=>{
+ const data={title:'Casa',type:'house',description:'Texto',country:'AR',region:'Neuquén',city:'Neuquén',area:90,bedrooms:2,bathrooms:1,cadastralNumber:'042105348930000',cadastralPublic:false,cadastre:{nomenclature:'042105348930000',geometry:{secret:'PRIVATE_GEOMETRY'}}};
+ const offer={data:{operation:'sale',amount:'120000',currency:'USD',period:'total'}};
+ assert.equal('cadastre' in publicListing({id:'11111111-1111-4111-8111-111111111111',data},offer),false);
+ data.cadastralPublic=true;
+ const dto=publicListing({id:'11111111-1111-4111-8111-111111111111',data},offer);
+ assert.deepEqual(dto.cadastre,{province:'AR-Q',nomenclature:'042105348930000'});
+ assert.ok(!JSON.stringify(dto).includes('PRIVATE_GEOMETRY'));
+ const update={status:'published',revision:1,listing:{...dto,media_ids:['22222222-2222-4222-8222-222222222222']}};
+ assert.equal(validate(update),true,JSON.stringify(validate.errors));
+ data.cadastralNumber='000000000000000';assert.equal('cadastre' in publicListing({id:'x',data},offer),false);
+});

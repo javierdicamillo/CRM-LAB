@@ -20,3 +20,6 @@ secrets/
 infra/private/
 *.tsbuildinfo
 CRM-LAB/private-uploads/
+
+# Base de datos de demostración local de PORTAL-LAB
+PORTAL-LAB/.local-db/

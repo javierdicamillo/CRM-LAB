@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { ApiError } from './errors';
-import { audit, transaction } from './db';
+import { audit, transaction, pool } from './db';
+import { lookupParcel, normalizeNomenclature, CadastreError } from '../../../contracts/cadastre';
 import { schemas, type Kind, inquirySchema } from './validation';
 
 export function publicListing(property:any,offer:any) {
@@ -9,7 +10,7 @@ export function publicListing(property:any,offer:any) {
   return {source_property_id:property.id,title:p.title,description:p.description,operation:o.operation,property_type:p.type,
     price:{amount:o.amount,currency:o.currency,period:o.period},
     location:{country_code:p.country,region:p.region,city:p.city,neighborhood:p.neighborhood,...(p.publicAddress?{public_address:p.publicAddress}:{})},
-    area_m2:p.area,bedrooms:p.bedrooms,bathrooms:p.bathrooms};
+    area_m2:p.area,bedrooms:p.bedrooms,bathrooms:p.bathrooms,...(p.cadastralPublic && p.cadastre && p.cadastre.nomenclature===p.cadastralNumber ? {cadastre:{province:'AR-Q',nomenclature:p.cadastre.nomenclature}} : {})};
 }
 async function related(c:PoolClient,id:string,kind:string) {
   if(!id) return;
@@ -47,6 +48,16 @@ export async function refreshProperty(c:PoolClient,propertyId:string) {
 }
 export async function saveRecord(userId:string,kind:Kind,input:unknown,id?:string,version?:number) {
   const data=schemas[kind].parse(input) as any;
+  if(kind==='property') {
+    if(data.cadastralNumber) {
+      if(data.country!=='AR'||data.region.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()!=='neuquen') throw new ApiError(400,'La vinculación catastral corresponde a propiedades de Neuquén, Argentina.');
+      try {
+        data.cadastralNumber=normalizeNomenclature(data.cadastralNumber);
+        const previous=id?(await pool.query("SELECT data FROM records WHERE id=$1 AND kind='property'",[id])).rows[0]?.data:null;
+        data.cadastre=previous?.cadastre?.nomenclature===data.cadastralNumber?previous.cadastre:await lookupParcel(data.cadastralNumber);
+      } catch(error) {if(error instanceof CadastreError)throw new ApiError(error.status,error.message);throw error;}
+    } else {data.cadastralPublic=false;}
+  }
   return transaction(async c=>{
     // Serialize commercial writes with publication snapshots and restores.
     await c.query('SELECT pg_advisory_xact_lock(7249002)');

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CRM-LAB y PORTAL-LAB — Protocolo LAB",
-    "version": "1.0.0-draft.1",
-    "description": "Borrador de contrato, 2026-10-09. PORTAL-LAB sirve esta API. Ocho CRM independientes inician las conexiones. La agencia se obtiene del token y nunca del cuerpo. No es una API desplegada. Ver docs/03-contrato-y-sincronizacion.md."
+    "version": "1.1.0",
+    "description": "Protocolo LAB implementado por PORTAL-LAB. v1.1 añade referencia catastral pública opcional; compatible con productores 1.0 sin ese campo."
   },
   "servers": [
     {
@@ -982,6 +982,25 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          "cadastre": {
+            "type": "object",
+            "description": "Solo con autorización expresa de publicar nomenclatura y ubicación exacta. Requiere protocolo 1.1. No identifica unidades funcionales ni acredita dominio.",
+            "properties": {
+              "province": {
+                "const": "AR-Q",
+                "type": "string"
+              },
+              "nomenclature": {
+                "type": "string",
+                "pattern": "^[0-9]{15}$"
+              }
+            },
+            "required": [
+              "province",
+              "nomenclature"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [

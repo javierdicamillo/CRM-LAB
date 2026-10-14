@@ -1,6 +1,6 @@
 # Operación de PORTAL-LAB en Hostinger
 
-Estado al 13 de octubre de 2026 (Argentina): aplicación y PostgreSQL saludables en el VPS, proxy público iniciado; publicación por dominio y HTTPS pendientes del cambio DNS.
+Estado al 14 de octubre de 2026 (Argentina): publicado en https://portal-neuquen.tech con HTTPS válido y redirección HTTPS de www al dominio principal. DNS A actualizado a 179.236.76.161 (TTL 60); contacto público info@portal-neuquen.tech. Aplicación y PostgreSQL saludables.
 
 - VPS: `srv2059603.hstgr.cloud`, IPv4 `179.236.76.161`.
 - Código desplegado: `/opt/portal-lab/source`; Compose en `infra/portal-lab`.
@@ -14,7 +14,7 @@ Estado al 13 de octubre de 2026 (Argentina): aplicación y PostgreSQL saludables
 
 ## Comprobaciones realizadas
 
-`/`, `/territorio`, `/territorio/fuentes`, `/privacidad`, `/healthz` y la imagen principal responden 200 dentro del VPS. El acceso HTTP público al VPS con Host `portal-neuquen.tech` redirige a HTTPS. Se creó una copia PostgreSQL y se restauró en una base temporal; esa base se eliminó después de la comprobación.
+`/`, `/territorio`, `/territorio/fuentes`, `/privacidad`, `/healthz` y la imagen principal responden 200 dentro del VPS. El acceso HTTP público al VPS con Host `portal-neuquen.tech` redirige a HTTPS. Se verificaron externamente la portada, /healthz, el contacto de privacidad y la redirección www, además de abrir la portada en el navegador. Se creó una copia PostgreSQL y se restauró en una base temporal; esa base se eliminó después de la comprobación.
 
 ## Copias y mantenimiento
 

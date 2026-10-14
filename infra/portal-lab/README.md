@@ -4,8 +4,8 @@ Estado al 13 de octubre de 2026 (Argentina): aplicación y PostgreSQL saludables
 
 - VPS: `srv2059603.hstgr.cloud`, IPv4 `179.236.76.161`.
 - Código desplegado: `/opt/portal-lab/source`; Compose en `infra/portal-lab`.
-- Dominio principal: `lotea.net`. `www.lotea.net`, `portal-neuquen.tech` y `www.portal-neuquen.tech` redirigen al principal.
-- DNS necesario: A `@` a la IPv4 del VPS en ambos dominios; CNAME `www` al dominio correspondiente. Preservar MX, TXT y registros de correo. Revisar cualquier AAAA antes de activar HTTPS.
+- Único dominio del portal: `portal-neuquen.tech`; `www.portal-neuquen.tech` redirige al principal. `lotea.net` se retiró de la configuración del VPS, sin cancelar su registro ni modificar sus servicios de correo.
+- DNS necesario: A `@` a la IPv4 del VPS en `portal-neuquen.tech`; CNAME `www` al dominio correspondiente. Preservar MX, TXT y registros de correo. Revisar cualquier AAAA antes de activar HTTPS.
 - Caddy obtiene y renueva certificados automáticamente cuando todos los nombres resuelven al VPS. No considerar HTTPS listo hasta verificarlo externamente.
 - Imagen de aplicación: `portal-lab:0.1.0`; PostgreSQL, Node y Caddy fijados por digest.
 - Credenciales exclusivamente en `secrets/`, permisos 600; nunca incorporarlas al repositorio. `portal_owner` ejecuta migraciones; `portal_app` tiene permisos de datos, sin superusuario ni creación de bases o roles.
@@ -14,7 +14,7 @@ Estado al 13 de octubre de 2026 (Argentina): aplicación y PostgreSQL saludables
 
 ## Comprobaciones realizadas
 
-`/`, `/territorio`, `/territorio/fuentes`, `/privacidad`, `/healthz` y la imagen principal responden 200 dentro del VPS. El acceso HTTP público al VPS con Host `lotea.net` redirige a HTTPS. Se creó una copia PostgreSQL y se restauró en una base temporal; esa base se eliminó después de la comprobación.
+`/`, `/territorio`, `/territorio/fuentes`, `/privacidad`, `/healthz` y la imagen principal responden 200 dentro del VPS. El acceso HTTP público al VPS con Host `portal-neuquen.tech` redirige a HTTPS. Se creó una copia PostgreSQL y se restauró en una base temporal; esa base se eliminó después de la comprobación.
 
 ## Copias y mantenimiento
 

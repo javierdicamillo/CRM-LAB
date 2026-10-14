@@ -11,3 +11,8 @@
     header_up X-Real-IP {remote_host}
   }
 }
+
+# Additional domains redirect to the canonical portal URL.
+www.lotea.net, portal-neuquen.tech, www.portal-neuquen.tech {
+  redir https://{$PORTAL_DOMAIN}{uri} permanent
+}

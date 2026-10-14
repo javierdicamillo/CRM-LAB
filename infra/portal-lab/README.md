@@ -24,7 +24,7 @@ Las copias están en el mismo VPS; no sustituyen una copia externa. El respaldo 
 
 ## Administración
 
-El acceso SSH utilizado es por clave en el puerto 2222; fue iniciado como listener temporal. El servicio principal de SSH en el puerto 22 no respondió desde el entorno de despliegue. Antes de reiniciar el VPS, confirmar acceso por consola de Hostinger o configurar un servicio persistente para el acceso alternativo.
+El acceso SSH por clave en el puerto 22 quedó verificado con la clave de host previamente comprobada. Se cerró el listener temporal del puerto 2222 después de verificar el acceso por el puerto principal.
 
 Desde el directorio Compose:
 

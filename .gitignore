@@ -23,3 +23,8 @@ CRM-LAB/private-uploads/
 
 # Base de datos de demostración local de PORTAL-LAB
 PORTAL-LAB/.local-db/
+
+# Importaciones asistidas (datos locales y caché Python)
+__pycache__/
+CRM-LAB/import-data/
+*.checkpoint.json

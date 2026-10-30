@@ -44,3 +44,7 @@ La pantalla carga hasta 20.000 registros comerciales; agregar paginación antes 
 Se agregó consulta de parcela por nomenclatura de 15 dígitos de Neuquén. El vínculo se comprueba contra DPCeIT al guardar y permanece privado por defecto. La autorización explícita permite publicarlo usando protocolo 1.1. No verifica titularidad ni unidades funcionales. Estos cambios todavía no están desplegados en el piloto.
 
 El Dockerfile ahora se construye desde la raíz del repositorio: `docker build -f CRM-LAB/Dockerfile -t crm-lab:0.2.0 .`, para incluir `contracts/cadastre.ts`. App y worker deben actualizarse juntos. El directorio de trabajo de la imagen sigue admitiendo `node dist/worker.mjs`.
+
+## Importar tus propiedades
+
+Propiedades incluye un modal para elegir Sitio web o API. La ejecución automática está bloqueada con candado; se puede generar, copiar y descargar un JSON para el agente del usuario. [Guía, adaptador de sitios y herramienta manual de importación](scripts/property-import/README.md). No incluye credenciales ni activa cargas desde el navegador.

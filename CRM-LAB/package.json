@@ -10,6 +10,7 @@
     "start": "next start --hostname 0.0.0.0",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
+    "whatsapp:test": "node --env-file=.env.local scripts/send-whatsapp.ts",
     "migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {

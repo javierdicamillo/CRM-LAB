@@ -1,0 +1,281 @@
+﻿RESUMEN DE LA INTEGRACIÓN DE WHATSAPP (KAPSO) - CRM-LAB
+=======================================================
+
+Fecha: 12/11/2026
+Estado: implementación mínima terminada y compilando. Prueba visual pendiente.
+
+
+1. QUÉ SE HIZO
+-------------
+
+Se integró Kapso (WhatsApp Cloud API) en el CRM con el camino más pequeño posible:
+
+- Un botón "WhatsApp" en la tabla de contactos.
+- Un modal para escribir y enviar el mensaje.
+- Una ruta autenticada: POST /api/whatsapp/send
+- Un helper de servidor para hablar con Kapso.
+- Un script de consola para probar credenciales y envío.
+- Variables de entorno documentadas.
+
+No se agregó una bandeja de entrada completa ni webhooks.
+No se modificó el comportamiento de propiedades, ofertas u oportunidades.
+
+
+2. CONFIGURACIÓN ACTUAL
+-----------------------
+
+Archivo: .env.local (NO está versionado, contiene secretos)
+
+Variables de Kapso:
+
+- KAPSO_API_KEY
+  Cargada y válida (64 caracteres). No se muestra en este archivo.
+
+- KAPSO_SANDBOX_PHONE_ID=597907523413541
+  Es el phone_number_id numérico de Meta.
+  Antes tenía por error el WABA ID 2102230076919824.
+
+- TEST_PHONE_NUMBER=541167062068
+  Número autorizado para pruebas en el sandbox.
+  Antes tenía por error el ID del número emisor.
+
+Datos del sandbox:
+
+- Número público de WhatsApp: +56 9 2040 3095
+- Nombre de sesión/contacto del sandbox: Guillermo
+- Tipo: sandbox
+- WABA ID: 2102230076919824
+- ID interno / configuración Kapso: aee3673f-110b-45bc-af00-5eefe2c2cc92
+
+También se agregaron placeholders en .env.example:
+
+- KAPSO_API_KEY=
+- KAPSO_SANDBOX_PHONE_ID=
+- KAPSO_PHONE_NUMBER_ID=  (para producción, tiene prioridad)
+- TEST_PHONE_NUMBER=
+
+
+3. ARCHIVOS NUEVOS
+------------------
+
+- src/lib/kapso.ts
+  Helper del servidor. Exporta:
+  - sendWhatsAppText(to, text)
+  - normalizeWhatsAppRecipient(value)
+  - kapsoConfigured()
+  - kapsoPhoneNumberId()
+  - KapsoError
+
+  Endpoint usado:
+  POST https://api.kapso.ai/meta/whatsapp/v24.0/{phone_number_id}/messages
+  Header: X-API-Key
+
+  Maneja:
+  - Teléfonos de 8 a 15 dígitos, sin "+".
+  - Mensajes vacíos o de más de 4096 caracteres.
+  - Errores HTTP de Kapso.
+  - Errores de red con un mensaje claro (HTTP 503 hacia la UI).
+
+- src/app/api/whatsapp/send/route.ts
+  Ruta POST autenticada.
+
+  Flujo:
+  1. Valida mismo origen (sameOrigin).
+  2. Valida sesión y usuario activo (actor).
+  3. Rate limit: 20 envíos cada 15 minutos por IP.
+  4. Valida body: { contactId: UUID, text: 1..4096 }
+  5. Busca el contacto y exige que tenga teléfono.
+  6. Envía por Kapso.
+  7. Registra auditoría: whatsapp.sent
+  8. Devuelve { ok: true, messageId }
+
+  Errores traducidos:
+  - 409: el destinatario debe escribir primero (ventana de 24 h).
+  - 429: Kapso limitó los envíos.
+  - 503: falta configuración o Kapso rechazó la autenticación.
+  - 502: fallo genérico de envío.
+
+- scripts/send-whatsapp.ts
+  Envío de prueba por consola, sin usar la UI.
+
+  Uso:
+    npm run whatsapp:test
+    npm run whatsapp:test -- --dry-run
+    npm run whatsapp:test -- --text "Mensaje de prueba"
+    npm run whatsapp:test -- --to 541167062068 --text "Mensaje de prueba"
+
+- RESUMEN-WHATSAPP-KAPSO.txt
+  Este archivo.
+
+
+4. ARCHIVOS MODIFICADOS
+-----------------------
+
+- src/components/workspace.tsx
+  - Importa el ícono MessageCircle.
+  - Nuevo estado whatsappModal.
+  - Botón WhatsApp en cada fila de contacto.
+    * Deshabilitado si el contacto no tiene teléfono.
+  - Modal de envío con textarea y aviso de la ventana de 24 h.
+  - Al enviar correctamente, recarga el estado y cierra el modal.
+
+- .env.example
+  - Variables de Kapso documentadas.
+
+- package.json
+  - Nuevo script:
+    "whatsapp:test": "node --env-file=.env.local scripts/send-whatsapp.ts"
+
+- tsconfig.json
+  - "allowImportingTsExtensions": true
+    Necesario para que el script importe ../src/lib/kapso.ts directamente.
+
+Nota: next-env.d.ts y next.config.ts ya estaban modificados antes de esta tarea
+y no se tocaron intencionalmente.
+
+
+5. PRIMER MENSAJE ENVIADO
+-------------------------
+
+Se envió correctamente un mensaje de prueba a 541167062068:
+
+ID del mensaje:
+wamid.HBgNNTQ5MTE2NzA2MjA2OBUCABEYEkU1NzNBQjIzNkUwNUEzOUJCNAA=
+
+Ese envío funcionó porque la ventana de 24 horas estaba abierta.
+
+
+6. VERIFICACIÓN REALIZADA
+-------------------------
+
+OK: npm run typecheck
+    tsc --noEmit sin errores.
+
+OK: npm run whatsapp:test -- --dry-run
+    Destinatario detectado: 541167062068
+    No envía nada, solo muestra el payload.
+
+OK: configuración detectada
+    configured: true
+    phoneNumberId: 597907523413541
+
+OK: helper de normalización
+    "+54 9 11 6706-2068" -> "5491167062068"
+
+NO VERIFICADO: prueba visual de la UI.
+NO VERIFICADO: envío desde el botón del contacto.
+NO VERIFICADO: npm test.
+
+
+7. LIMITACIONES ACTUALES
+------------------------
+
+A. PostgreSQL local no está disponible.
+   Error: ECONNREFUSED en 127.0.0.1:5432
+   Sin base de datos no se puede cargar la app ni probar la ruta completa.
+
+B. node_modules está instalado para Windows (win32-x64).
+   El entorno de esta sesión es Linux/WSL.
+   Por eso Next y esbuild no pueden ejecutarse desde acá.
+   npm test falla por el binario de esbuild de otra plataforma,
+   no por el código de WhatsApp.
+
+   Para probar la UI: levantar PostgreSQL y ejecutar la app desde Windows.
+
+C. Ventana de 24 horas de Meta.
+   WhatsApp solo permite mensajes libres si el destinatario escribió
+   al número en las últimas 24 horas.
+   Fuera de esa ventana, Meta responde HTTP 422:
+   "Cannot send non-template messages outside the 24-hour window".
+
+D. Sandbox de Kapso.
+   - Solo permite enviar al número autorizado.
+   - El destinatario debe escribir primero al +56 9 2040 3095.
+   - No permite listar ni usar plantillas.
+   - Las comprobaciones de salud del número aparecen como no saludables
+     porque el sandbox no soporta los chequeos de Meta.
+
+E. Producción.
+   Todavía no hay un número productivo conectado.
+   El setup de producción quedó pendiente.
+   Para enviar mensajes en frío hace falta:
+   - Conectar una línea productiva.
+   - Crear una plantilla.
+   - Que Meta la apruebe.
+   - Enviar con type: "template" en lugar de type: "text".
+
+
+8. CÓMO PROBAR CUANDO LA BASE ESTÉ ARRIBA
+-----------------------------------------
+
+1. Iniciar PostgreSQL.
+2. Ejecutar migraciones si hace falta:
+     npm run migrate
+3. Levantar la app:
+     npm run dev
+4. Entrar al CRM con un usuario administrador o agente.
+5. Ir a Contactos.
+6. Verificar que el contacto tenga teléfono.
+7. Presionar "WhatsApp".
+8. Escribir un mensaje y enviar.
+9. Resultado esperado:
+   - Toast: "Mensaje enviado por WhatsApp."
+   - Registro de auditoría whatsapp.sent.
+
+Para que el envío real funcione en el sandbox:
+- El destinatario debe ser 541167062068.
+- Primero debe escribir al +56 9 2040 3095.
+- La ventana de 24 horas debe estar abierta.
+
+
+9. SEGURIDAD - REVISAR ANTES DE DEMO O PRODUCCIÓN
+-------------------------------------------------
+
+En .env.local se detectaron valores débiles o pendientes:
+
+- BETTER_AUTH_SECRET sigue con un placeholder.
+- BOOTSTRAP_TOKEN está duplicado y el último valor es 123456.
+- ACTIVATION_TOKEN es débil.
+
+Recomendación:
+- Generar secretos nuevos y largos.
+- Rotar los tokens.
+- No compartir .env.local.
+- No commitear .env.local.
+
+También quedaron archivos sin trackear por la instalación de skills:
+
+- .agents/
+- .claude/
+- agent/
+- skills-lock.json
+
+Y archivos nuevos de esta integración:
+
+- src/app/api/whatsapp/
+- src/lib/kapso.ts
+- scripts/send-whatsapp.ts
+- RESUMEN-WHATSAPP-KAPSO.txt
+
+
+10. PRÓXIMOS PASOS SUGERIDOS
+----------------------------
+
+Corto plazo:
+1. Levantar PostgreSQL y la app en Windows.
+2. Probar el botón WhatsApp con el número autorizado.
+3. Confirmar que el mensaje llega y que se audita.
+
+Antes de producción:
+4. Rotar secretos débiles.
+5. Conectar un número productivo de WhatsApp.
+6. Crear y aprobar una plantilla para mensajes en frío.
+7. Agregar soporte de plantillas en src/lib/kapso.ts.
+8. Definir si se quiere bandeja de entrada y webhooks de Kapso.
+
+Opcional:
+9. Agregar tests unitarios para normalizeWhatsAppRecipient y el mapeo de errores.
+10. Registrar en auditoría el messageId o el teléfono, si se necesita trazabilidad.
+
+
+FIN DEL RESUMEN

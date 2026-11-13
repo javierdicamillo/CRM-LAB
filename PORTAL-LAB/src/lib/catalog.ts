@@ -2,6 +2,7 @@ import { query, transaction } from "./db";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { body, failure, HttpError, json, limit, sameOrigin } from "./http";
+import { isValidPhone, normalizePhone } from "./phone";
 export const visible =
   "l.status='published' AND a.active AND a.lease_expires_at>now()";
 export async function catalog(params: {
@@ -86,7 +87,11 @@ export async function submitInquiry(request: Request) {
         listingId: z.uuid(),
         name: z.string().trim().min(1).max(150),
         email: z.union([z.email(), z.literal("")]),
-        phone: z.string().trim().max(40),
+        phone: z
+          .string()
+          .trim()
+          .max(40)
+          .refine((v) => !v || isValidPhone(v), "Teléfono inválido."),
         message: z.string().trim().min(1).max(5000),
         consent: z.literal(true),
         website: z.literal("").optional(),
@@ -113,7 +118,7 @@ export async function submitInquiry(request: Request) {
           JSON.stringify({
             name: input.name,
             ...(input.email ? { email: input.email } : {}),
-            ...(input.phone ? { phone: input.phone } : {}),
+            ...(input.phone ? { phone: normalizePhone(input.phone) } : {}),
           }),
           input.message,
         ],

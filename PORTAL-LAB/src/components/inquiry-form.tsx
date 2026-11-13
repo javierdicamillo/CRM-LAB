@@ -1,18 +1,32 @@
 "use client";
 import { useState, type FormEvent } from "react";
+import { MessageCircle } from "lucide-react";
+import { isValidPhone, normalizePhone } from "@/lib/phone";
+const whatsappNumber =
+  process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "15557818580";
 export default function InquiryForm({
   listingId,
   agency,
+  propertyTitle,
 }: {
   listingId: string;
   agency: string;
+  propertyTitle: string;
 }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [sent, setSent] = useState(false);
+    [sent, setSent] = useState(false),
+    [phone, setPhone] = useState("");
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
+    const rawPhone = String(data.get("phone") ?? "").trim();
+    const normalizedPhone = normalizePhone(rawPhone);
+    if (rawPhone && !isValidPhone(rawPhone)) {
+      setError("Revisá el teléfono: incluí el código de área o país.");
+      return;
+    }
+    setPhone(normalizedPhone);
     setBusy(true);
     setError("");
     try {
@@ -23,7 +37,7 @@ export default function InquiryForm({
           listingId,
           name: data.get("name"),
           email: data.get("email"),
-          phone: data.get("phone"),
+          phone: normalizedPhone,
           message: data.get("message"),
           consent: data.get("consent") === "on",
           website: data.get("website"),
@@ -40,6 +54,10 @@ export default function InquiryForm({
       setBusy(false);
     }
   }
+  const activationText = `Hola, vengo del portal. Me interesa ${propertyTitle}. Quiero consultar por precio, ubicación, requisitos y descripción.`;
+  const whatsappLink = phone
+    ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(activationText)}`
+    : "";
   return sent ? (
     <div className="success" role="status">
       <h3>Tu consulta quedó guardada.</h3>
@@ -47,6 +65,23 @@ export default function InquiryForm({
         {agency} la recibirá en su CRM para contactarte. No hace falta enviarla
         otra vez.
       </p>
+      {whatsappLink && (
+        <>
+          <p>Podés seguir la conversación ahora mismo por WhatsApp:</p>
+          <a
+            className="primary"
+            href={whatsappLink}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Continuar por WhatsApp <MessageCircle size={16} />
+          </a>
+          <small>
+            Se abrirá WhatsApp con un mensaje listo. Enviálo para que podamos
+            responderte por ahí.
+          </small>
+        </>
+      )}
     </div>
   ) : (
     <form className="inquiry-form" onSubmit={submit}>
@@ -64,9 +99,19 @@ export default function InquiryForm({
       </label>
       <label>
         Teléfono
-        <input name="phone" type="tel" maxLength={40} autoComplete="tel" />
+        <input
+          name="phone"
+          type="tel"
+          maxLength={40}
+          autoComplete="tel"
+          inputMode="tel"
+          placeholder="299 603-5274"
+        />
       </label>
-      <small>Completá al menos un correo o teléfono.</small>
+      <small>
+        Completá al menos un correo o teléfono. Si dejás teléfono, incluí el
+        código de área: lo usamos para responderte por WhatsApp.
+      </small>
       <label>
         Tu mensaje
         <textarea

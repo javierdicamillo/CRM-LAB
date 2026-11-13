@@ -9,7 +9,7 @@ export async function POST(request:Request) {
     sameOrigin(request);
     const user=await actor(request);
     await limited(request,'whatsapp',20);
-    if(!kapsoConfigured()) throw new ApiError(503,'WhatsApp no está configurado. Revisá KAPSO_API_KEY y KAPSO_SANDBOX_PHONE_ID.');
+    if(!kapsoConfigured()) throw new ApiError(503,'WhatsApp no está configurado. Revisá KAPSO_API_KEY y KAPSO_PHONE_NUMBER_ID.');
 
     const input=z.object({contactId:z.uuid(),text:z.string().trim().min(1).max(4096)}).strict().parse(await jsonBody(request));
     const contact=(await pool.query("SELECT data FROM records WHERE id=$1 AND kind='contact'",[input.contactId])).rows[0];
@@ -24,7 +24,9 @@ export async function POST(request:Request) {
         if(error.status===0) throw new ApiError(503,error.detail);
         if(error.status===422&&/24-hour window/i.test(error.detail)) throw new ApiError(409,'El destinatario debe escribir primero por WhatsApp para abrir la ventana de 24 horas.');
         if(error.status===429) throw new ApiError(429,'WhatsApp limitó los envíos. Esperá unos minutos y reintentá.');
-        if(error.status===401||error.status===403) throw new ApiError(503,'Kapso rechazó la autenticación. Revisá la API key.');
+        if(error.status===401) throw new ApiError(503,'Kapso rechazó la autenticación. Revisá la API key.');
+        if(error.status===403&&/sandbox session/i.test(error.detail)) throw new ApiError(409,'El destinatario no tiene una sesión activa en el sandbox de Kapso. En Kapso, andá a WhatsApp → Sandbox, agregá ese teléfono y enviá el código de activación desde ese mismo teléfono al número del sandbox.');
+        if(error.status===403) throw new ApiError(403,error.detail||'Kapso rechazó la operación.');
         if(error.status===400) throw new ApiError(400,error.detail);
         throw new ApiError(502,'No se pudo enviar el mensaje por WhatsApp. Volvé a intentarlo.');
       }

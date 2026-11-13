@@ -4,6 +4,7 @@ import { ApiError } from './errors';
 import { audit, transaction, pool } from './db';
 import { lookupParcel, normalizeNomenclature, CadastreError } from '../../../contracts/cadastre';
 import { schemas, type Kind, inquirySchema } from './validation';
+import { enqueueGreeting, isValidPhone, normalizePhone } from './whatsapp';
 
 export function publicListing(property:any,offer:any) {
   const p=property.data, o=offer.data;
@@ -100,10 +101,19 @@ export async function importInquiry(portalId:string,input:unknown) {
     // Reutilizar solo si el correo identifica exactamente un contacto; nunca por nombre.
     // Consultas nuevas de la misma dirección se revisan antes de crear oportunidades adicionales.
     const email=item.contact.email?.toLowerCase();
-    const matches=email?(await c.query("SELECT id FROM records WHERE kind='contact' AND lower(data->>'email')=$1",[email])).rows:[];
+    const matches=email?(await c.query("SELECT id,data FROM records WHERE kind='contact' AND lower(data->>'email')=$1",[email])).rows:[];
     const contactId=matches.length===1?matches[0].id:randomUUID();
     const assigneeId=property?.data.assigneeId??'';
-    if(matches.length!==1) await c.query('INSERT INTO records(id,kind,data) VALUES($1,\'contact\',$2)',[contactId,JSON.stringify({name:item.contact.name,email:email??'',phone:item.contact.phone??'',type:'buyer',notes:'Consulta recibida de PORTAL-LAB.',assigneeId})]);
+    const inquiryPhone=isValidPhone(item.contact.phone??'')?normalizePhone(item.contact.phone!):'';
+    // La propiedad consultada queda en el contacto: el bot la prioriza sobre la última oportunidad.
+    if(matches.length!==1) await c.query('INSERT INTO records(id,kind,data) VALUES($1,\'contact\',$2)',[contactId,JSON.stringify({name:item.contact.name,email:email??'',phone:inquiryPhone,type:'buyer',notes:'Consulta recibida de PORTAL-LAB.',assigneeId,whatsappPropertyId:property.id})]);
+    else {
+      const changes:Record<string,string>={};
+      if(matches[0].data?.whatsappPropertyId!==property.id) changes.whatsappPropertyId=property.id;
+      if(inquiryPhone&&matches[0].data?.phone!==inquiryPhone) changes.phone=inquiryPhone;
+      if(Object.keys(changes).length) await c.query("UPDATE records SET data=data||$2::jsonb,version=version+1,updated_at=now() WHERE id=$1 AND kind='contact'",[contactId,JSON.stringify(changes)]);
+    }
+    const leadPhone=inquiryPhone||matches[0]?.data?.phone||'';
     // Registrar cada consulta como actividad; oportunidad existente por contacto/oferta se reutiliza.
     const opportunities=(await c.query("SELECT id FROM records WHERE kind='opportunity' AND data->>'contactId'=$1 AND data->>'offerId'=$2 AND data->>'stage' NOT IN ('won','lost') ORDER BY created_at LIMIT 1",[contactId,offer.id])).rows;
     const opportunityId=opportunities[0]?.id??randomUUID();
@@ -111,6 +121,7 @@ export async function importInquiry(portalId:string,input:unknown) {
     const id=randomUUID();
     await c.query('INSERT INTO inbox(id,portal_id,inquiry_id,payload,contact_id,opportunity_id) VALUES($1,$2,$3,$4,$5,$6)',[id,portalId,item.inquiry_id,JSON.stringify(item),contactId,opportunityId]);
     await c.query('INSERT INTO records(id,kind,data) VALUES($1,\'activity\',$2)',[randomUUID(),JSON.stringify({title:`Responder a ${item.contact.name}`,type:'call',dueAt:new Date().toISOString(),done:false,contactId,propertyId:property.id,opportunityId,assigneeId,notes:item.message})]);
+    if(isValidPhone(leadPhone)) {await enqueueGreeting(c,{leadId:contactId,propertyId:property.id,name:item.contact.name,propertyTitle:property.data.title,inboxId:id});await audit(c,null,'whatsapp.activation_queued',contactId);}
     await audit(c,null,'inquiry.imported',id);
     return {id,duplicate:false};
   });

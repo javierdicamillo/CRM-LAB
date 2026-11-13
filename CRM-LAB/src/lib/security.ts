@@ -3,6 +3,7 @@ import { auth } from './auth';
 import { pool } from './db';
 import { createHash } from 'node:crypto';
 import { ApiError } from './errors';
+import { isTrustedOrigin } from './origins';
 export { ApiError,validToken } from './errors';
 export async function actor(request: Request, admin=false) {
   const session = await auth.api.getSession({headers:request.headers});
@@ -14,7 +15,7 @@ export async function actor(request: Request, admin=false) {
   return {...session.user,role:staff.role as 'admin'|'agent'};
 }
 export function sameOrigin(request: Request) {
-  if (request.headers.get('origin') !== new URL(process.env.BETTER_AUTH_URL!).origin) throw new ApiError(403,'Origen de solicitud no permitido.');
+  if (!isTrustedOrigin(request.headers.get('origin'))) throw new ApiError(403,'Origen de solicitud no permitido.');
 }
 export async function limited(request:Request,scope:string,max=20) {
   const ip=request.headers.get('x-real-ip') ?? 'local';

@@ -16,6 +16,6 @@ export async function transaction<T>(fn: (client: PoolClient) => Promise<T>) {
   catch(error) { await client.query('ROLLBACK'); throw error; }
   finally { client.release(); }
 }
-export async function audit(client: PoolClient, user: string | null, action: string, entity?: string) {
+export async function audit(client: Pick<PoolClient, 'query'>, user: string | null, action: string, entity?: string) {
   await client.query('INSERT INTO audit(user_id,action,entity_id) VALUES($1,$2,$3)',[user,action,entity ?? null]);
 }

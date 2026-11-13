@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "whatsapp:test": "node --env-file=.env.local scripts/send-whatsapp.ts",
-    "migrate": "tsx scripts/migrate.ts"
+    "worker:dev": "node --env-file=.env.local --import tsx scripts/worker.ts",
+    "migrate": "node --env-file=.env.local --import tsx scripts/migrate.ts"
   },
   "dependencies": {
     "next": "16.4.0",

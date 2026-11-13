@@ -141,7 +141,11 @@ export default async function Detail({
           <Link className="agency-name" href={`/inmobiliarias/${row.slug}`}>
             {row.agency} ↗
           </Link>
-          <InquiryForm listingId={row.id} agency={row.agency} />
+          <InquiryForm
+          listingId={row.id}
+          agency={row.agency}
+          propertyTitle={l.title}
+        />
         </aside>
       </div>
     </main>

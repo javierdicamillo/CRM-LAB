@@ -38,9 +38,9 @@ export async function sendWhatsAppText(to: string, text: string): Promise<KapsoS
   const apiKey = env('KAPSO_API_KEY');
   const phoneNumberId = kapsoPhoneNumberId();
   if (!apiKey) throw new KapsoError(0, 'Falta KAPSO_API_KEY.');
-  if (!phoneNumberId) throw new KapsoError(0, 'Falta KAPSO_SANDBOX_PHONE_ID.');
+  if (!phoneNumberId) throw new KapsoError(0, 'Falta KAPSO_PHONE_NUMBER_ID (o KAPSO_SANDBOX_PHONE_ID).');
   if (!/^\d+$/.test(phoneNumberId)) {
-    throw new KapsoError(0, 'KAPSO_SANDBOX_PHONE_ID debe ser el phone_number_id numérico de Meta.');
+    throw new KapsoError(0, 'KAPSO_PHONE_NUMBER_ID debe ser el phone_number_id numérico de Meta.');
   }
 
   const body = text.trim();

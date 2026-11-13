@@ -50,7 +50,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     if (error instanceof KapsoError) {
       const hint = error.status === 422 && /24-hour window/i.test(error.detail)
         ? ' El destinatario debe enviar primero un mensaje al número de WhatsApp del sandbox para abrir la ventana de 24 horas.'
-        : '';
+        : error.status === 403 && /sandbox session/i.test(error.detail)
+          ? ' Agregá ese teléfono en Kapso → WhatsApp → Sandbox y enviá el código de activación desde ese mismo teléfono al número del sandbox.'
+          : '';
       console.error(`Kapso rechazó el envío (HTTP ${error.status || 'config'}): ${error.detail}${hint}`);
     } else {
       console.error(error instanceof Error ? error.message : 'No se pudo enviar el mensaje.');

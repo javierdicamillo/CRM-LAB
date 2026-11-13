@@ -1,5 +1,5 @@
 import pg from 'pg';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 const target=process.env.TARGET_DATABASE??'crm_lab';
 if(!['crm_lab','crm_lab_test'].includes(target))throw new Error('Base no permitida');
 const adminPassword=(await readFile(process.env.ADMIN_PASSWORD_FILE,'utf8')).trim();
@@ -9,10 +9,19 @@ if(!(await admin.query("SELECT 1 FROM pg_roles WHERE rolname='crm_app'")).rowCou
 if(!(await admin.query('SELECT 1 FROM pg_database WHERE datname=$1',[target])).rowCount)await admin.query(`CREATE DATABASE ${target}`);
 await admin.end();
 const db=new pg.Client({host:'db',database:target,user:'postgres',password:adminPassword});await db.connect();
+const migrationsDir=new URL('../migrations/',import.meta.url);
+const migrations=(await readdir(migrationsDir)).filter(file=>/^\d{3}-[a-z0-9-]+\.sql$/.test(file)).sort();
+if(!migrations.length)throw new Error('No hay migraciones para aplicar');
 try{
  await db.query('BEGIN');await db.query('SELECT pg_advisory_xact_lock(7249001)');
  await db.query('CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY,applied_at timestamptz NOT NULL DEFAULT now())');
- if(!(await db.query("SELECT 1 FROM schema_migrations WHERE name='001-initial'")).rowCount){await db.query(await readFile(new URL('../migrations/001-initial.sql',import.meta.url),'utf8'));await db.query("INSERT INTO schema_migrations(name) VALUES('001-initial')");}
+ for(const file of migrations){
+  const name=file.slice(0,-'.sql'.length);
+  if((await db.query('SELECT 1 FROM schema_migrations WHERE name=$1',[name])).rowCount)continue;
+  await db.query(await readFile(new URL(file,migrationsDir),'utf8'));
+  await db.query('INSERT INTO schema_migrations(name) VALUES($1)',[name]);
+  console.log(`Migración aplicada: ${name}`);
+ }
  await db.query('REVOKE CREATE ON SCHEMA public FROM PUBLIC');
  await db.query('GRANT USAGE ON SCHEMA public TO crm_app');
  await db.query('GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO crm_app');

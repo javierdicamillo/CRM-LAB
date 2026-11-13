@@ -4,7 +4,7 @@ import { ApiError } from './errors';
 import { audit, transaction, pool } from './db';
 import { lookupParcel, normalizeNomenclature, CadastreError } from '../../../contracts/cadastre';
 import { schemas, type Kind, inquirySchema } from './validation';
-import { enqueueGreeting, isValidPhone, normalizePhone } from './whatsapp';
+import { enqueueGreeting, isValidPhone, normalizePhone, whatsappAutoreplyEnabled } from './whatsapp';
 
 export function publicListing(property:any,offer:any) {
   const p=property.data, o=offer.data;
@@ -121,7 +121,7 @@ export async function importInquiry(portalId:string,input:unknown) {
     const id=randomUUID();
     await c.query('INSERT INTO inbox(id,portal_id,inquiry_id,payload,contact_id,opportunity_id) VALUES($1,$2,$3,$4,$5,$6)',[id,portalId,item.inquiry_id,JSON.stringify(item),contactId,opportunityId]);
     await c.query('INSERT INTO records(id,kind,data) VALUES($1,\'activity\',$2)',[randomUUID(),JSON.stringify({title:`Responder a ${item.contact.name}`,type:'call',dueAt:new Date().toISOString(),done:false,contactId,propertyId:property.id,opportunityId,assigneeId,notes:item.message})]);
-    if(isValidPhone(leadPhone)) {await enqueueGreeting(c,{leadId:contactId,propertyId:property.id,name:item.contact.name,propertyTitle:property.data.title,inboxId:id});await audit(c,null,'whatsapp.activation_queued',contactId);}
+    if(whatsappAutoreplyEnabled()&&isValidPhone(leadPhone)) {await enqueueGreeting(c,{leadId:contactId,propertyId:property.id,name:item.contact.name,propertyTitle:property.data.title,inboxId:id});await audit(c,null,'whatsapp.activation_queued',contactId);}
     await audit(c,null,'inquiry.imported',id);
     return {id,duplicate:false};
   });

@@ -8,6 +8,7 @@ import {
   processWhatsAppQueue,
   saveInbound,
   verifyWebhookSignature,
+  whatsappAutoreplyEnabled,
 } from '@/lib/whatsapp';
 import { transaction } from '@/lib/db';
 
@@ -48,7 +49,8 @@ async function handleEvent(event: any): Promise<'processed' | 'ignored' | 'dupli
   // Un número desconocido se da de alta como contacto en lugar de descartarse.
   const contact = await findOrCreateContact({ phone, name: contactName });
   const { lead, opportunityId, propertyId } = await loadLead(contact);
-  const reply = text ? responder.responder(text, lead) : '';
+  const autoreply = whatsappAutoreplyEnabled();
+  const reply = autoreply && text ? responder.responder(text, lead) : '';
 
   // Inbound, respuesta y acciones se confirman juntos: si algo falla, Kapso
   // reintenta y no se pierde la respuesta por el dedupe del mensaje entrante.
@@ -61,7 +63,7 @@ async function handleEvent(event: any): Promise<'processed' | 'ignored' | 'dupli
     });
     if (!saved.inserted) return 'duplicate';
     if (!text) return 'ignored';
-    if (dedupeBase) {
+    if (dedupeBase && autoreply) {
       await enqueueReply(client, {
         leadId: lead.id,
         propertyId,

@@ -157,7 +157,7 @@ Producción actual: `https://open-crm.tech` (VPS, Caddy + HTTPS, app + worker
 
 Huecos y orden sugerido:
 
-1. **Migración**: `CRM-LAB/scripts/provision.mjs` aplica **solo `001-initial`** (hardcodeado). Hay que hacer que aplique todas las migraciones en orden y recién después los `GRANT`. Sin esto, el webhook falla por falta de `whatsapp_messages`.
+1. **Migración**: corregido en el working tree. `CRM-LAB/scripts/provision.mjs` descubre `migrations/*.sql`, las aplica en orden y recién después ejecuta los `GRANT`. Verificado en una base temporal: se aplicaron `001-initial` y `002-whatsapp`, y `crm_app` quedó con permisos sobre `whatsapp_messages`. Falta commitear y desplegar.
 2. **Secretos**: agregar `KAPSO_API_KEY`, `KAPSO_PHONE_NUMBER_ID` y `KAPSO_WEBHOOK_SECRET` a `/opt/crm-lab/secrets/app.env`. Hoy no hay ninguna `KAPSO_*`, así que el webhook respondería 503 por diseño.
 3. **Imagen**: construir con tag nuevo y actualizar **app y worker juntos** (el README lo exige).
 4. **Compose**: validar y `docker compose -f compose.yaml -f compose.app.yaml up -d --wait`.
@@ -193,8 +193,31 @@ node .agents/skills/integrate-whatsapp/scripts/list.js \
   --phone-number-id 1404393919431625 --scope config
 ```
 
+### Prueba local con sandbox (sin tocar el VPS)
+
+Para verificar la ruta y la firma sin desplegar, se puede exponer el servidor
+local con un túnel HTTPS y registrar el webhook en el número sandbox
+`597907523413541`:
+
+```bash
+npx cloudflared tunnel --url http://127.0.0.1:3000
+# alta del webhook apuntando a https://<tunel>/webhooks/kapso
+```
+
+- El sandbox de Kapso no expone un número público (`display_phone_number: null`):
+  sirve para probar configuración, firma y eventos de prueba, no para recibir un
+  WhatsApp real de un cliente.
+- La API actual exige `secret_key` al crear el webhook. Si el script de la skill
+  no lo envía, se genera uno aleatorio y se guarda solo en `.env.local`
+  (local) o en `secrets/app.env` (producción).
+- El número de producción sigue apuntando a `https://open-crm.tech/webhooks/kapso`
+  y esa ruta continúa en 404 hasta desplegar la imagen nueva.
+
 ## 10. Riesgos y advertencias
 
+- **Doble respondedor**: el workflow `Respuesta basica` de Kapso está activo con trigger `inbound_message` sobre el número de producción `1404393919431625` y responde solo (`auto_send_assistant_text`). Si el CRM también encola la respuesta de Katy, el cliente recibe dos mensajes. Decisión: **responde el workflow**; el CRM registra, sincroniza y aplica acciones con `WHATSAPP_AUTOREPLY=off`. Sin ese flag, el webhook encola la respuesta de Katy.
+- **Agente sin herramientas**: el prompt del workflow pide "usar la herramienta de búsqueda", pero el agente no tiene `flow_agent_function_tools`, webhooks, MCP ni bases de conocimiento. Hasta conectar la función del CRM no consulta el catálogo y debe responder que no tiene el dato.
+- **Envío desde producción bloqueado**: el número devuelve `#131037 WhatsApp provided number needs display name approval before message can be sent`. Hasta aprobar el display name, el CRM no puede enviar desde ese número.
 - **Número de prueba de Meta**: `+1 555-781-8580` solo permite escribir a números autorizados. Para clientes reales hace falta un número verificado.
 - **Ventana de 24 h**: sin plantillas aprobadas no se puede iniciar una conversación. Por eso el CTA `wa.me` del portal (el cliente inicia) es la pieza clave.
 - **Saludo proactivo**: si el cliente aún no escribió, cae en la ventana de 24 h (422) y se agota por el tope de intentos.

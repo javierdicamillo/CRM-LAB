@@ -6,6 +6,11 @@ import type { Lead } from './katy';
 
 type Queryable = Pick<PoolClient, 'query'>;
 
+// Si responde un agente de Kapso (workflow), el CRM solo registra: WHATSAPP_AUTOREPLY=off.
+export function whatsappAutoreplyEnabled(): boolean {
+  return (process.env.WHATSAPP_AUTOREPLY ?? 'on').trim().toLowerCase() !== 'off';
+}
+
 // Kapso firma el body crudo: X-Webhook-Signature = HMAC-SHA256(secreto, body) en hex.
 export function verifyWebhookSignature(raw: string, signature: string | null, secret: string): boolean {
   if (!signature || !/^[a-f0-9]{64}$/i.test(signature)) return false;

@@ -63,11 +63,14 @@ Puntos clave:
 | `src/lib/kapso.ts` | Envío de texto; `KAPSO_PHONE_NUMBER_ID` tiene prioridad sobre el sandbox. |
 | `src/lib/db.ts` | `audit` acepta cualquier cliente con `query` (para usarlo dentro de transacción). |
 | `src/app/api/whatsapp/send/route.ts` | Envío manual desde el CRM y traducción de errores de Kapso. |
+| `src/app/catalog/route.ts` | `GET /catalog`: lectura pública del catálogo para el agente de Kapso; exige token Bearer y `limited()`. |
+| `src/lib/catalog.ts` | Filtros y consulta del catálogo: solo ofertas publicadas, inmueble disponible/reservado y al menos una foto aprobada; proyecta con `publicListing`. |
 | `scripts/worker.ts` | Loop: sincronización cada 60 s + cola de WhatsApp cada ~3 s. |
 | `scripts/migrate.ts` | Aplica `001-initial` y `002-whatsapp`. |
 | `tests/whatsapp.test.ts` | 6 tests: teléfonos, Katy (datos/visita/agente/fallback) y firma HMAC. |
+| `tests/catalog.test.ts` | Filtros, valores por defecto, rechazos y escape de comodines ILIKE del catálogo. |
 | `RESUMEN-WHATSAPP-KAPSO.txt` | Doc operativa (se conserva en `.txt`). |
-| `.env.example` | Suma `KAPSO_WEBHOOK_SECRET`. |
+| `.env.example` | Suma `KAPSO_WEBHOOK_SECRET` y `CATALOG_TOKEN`. |
 | `package.json` | `worker:dev` y `migrate` cargan `.env.local`. |
 
 ### PORTAL-LAB
@@ -110,6 +113,7 @@ Variables en `CRM-LAB/.env.local` (no versionado):
 - `KAPSO_PHONE_NUMBER_ID=1404393919431625`
 - `KAPSO_WEBHOOK_SECRET` — **provisorio**; debe reemplazarse por el `secret_key` real que devuelva Kapso al crear el webhook.
 - `TEST_PHONE_NUMBER="541167062068"`, `META_PHONE_NUMBER="15557818580"`
+- `CATALOG_TOKEN` — token Bearer de `GET /catalog` para el agente de Kapso.
 - `PORTAL_URL`, `PORTAL_TOKEN`, `PORTAL_INSTANCE_ID` — **vacías** (sincronización portal→CRM sin configurar).
 
 `PORTAL-LAB/.env.local` **no existe** todavía.
@@ -158,7 +162,7 @@ Producción actual: `https://open-crm.tech` (VPS, Caddy + HTTPS, app + worker
 Huecos y orden sugerido:
 
 1. **Migración**: corregido en el working tree. `CRM-LAB/scripts/provision.mjs` descubre `migrations/*.sql`, las aplica en orden y recién después ejecuta los `GRANT`. Verificado en una base temporal: se aplicaron `001-initial` y `002-whatsapp`, y `crm_app` quedó con permisos sobre `whatsapp_messages`. Falta commitear y desplegar.
-2. **Secretos**: agregar `KAPSO_API_KEY`, `KAPSO_PHONE_NUMBER_ID` y `KAPSO_WEBHOOK_SECRET` a `/opt/crm-lab/secrets/app.env`. Hoy no hay ninguna `KAPSO_*`, así que el webhook respondería 503 por diseño.
+2. **Secretos**: agregar `KAPSO_API_KEY`, `KAPSO_PHONE_NUMBER_ID`, `KAPSO_WEBHOOK_SECRET` y `CATALOG_TOKEN` a `/opt/crm-lab/secrets/app.env`. Hoy no hay ninguna `KAPSO_*`, así que el webhook respondería 503 por diseño, y sin `CATALOG_TOKEN` el catálogo responde 503.
 3. **Imagen**: construir con tag nuevo y actualizar **app y worker juntos** (el README lo exige).
 4. **Compose**: validar y `docker compose -f compose.yaml -f compose.app.yaml up -d --wait`.
 5. **Webhook**: registrar apuntando a `https://open-crm.tech/webhooks/kapso` y guardar el `secret_key` real.
@@ -216,7 +220,7 @@ npx cloudflared tunnel --url http://127.0.0.1:3000
 ## 10. Riesgos y advertencias
 
 - **Doble respondedor**: el workflow `Respuesta basica` de Kapso está activo con trigger `inbound_message` sobre el número de producción `1404393919431625` y responde solo (`auto_send_assistant_text`). Si el CRM también encola la respuesta de Katy, el cliente recibe dos mensajes. Decisión: **responde el workflow**; el CRM registra, sincroniza y aplica acciones con `WHATSAPP_AUTOREPLY=off`. Sin ese flag, el webhook encola la respuesta de Katy.
-- **Agente sin herramientas**: el prompt del workflow pide "usar la herramienta de búsqueda", pero el agente no tiene `flow_agent_function_tools`, webhooks, MCP ni bases de conocimiento. Hasta conectar la función del CRM no consulta el catálogo y debe responder que no tiene el dato.
+- **Agente sin herramienta registrada**: el prompt del workflow pide "usar la herramienta de búsqueda" y el CRM ya expone `GET /catalog`, pero el agente sigue sin `flow_agent_function_tools`. Falta registrar la función apuntando a `https://<crm>/catalog` con `Authorization: Bearer $CATALOG_TOKEN`; hasta entonces debe responder que no tiene el dato.
 - **Envío desde producción bloqueado**: el número devuelve `#131037 WhatsApp provided number needs display name approval before message can be sent`. Hasta aprobar el display name, el CRM no puede enviar desde ese número.
 - **Número de prueba de Meta**: `+1 555-781-8580` solo permite escribir a números autorizados. Para clientes reales hace falta un número verificado.
 - **Ventana de 24 h**: sin plantillas aprobadas no se puede iniciar una conversación. Por eso el CTA `wa.me` del portal (el cliente inicia) es la pieza clave.

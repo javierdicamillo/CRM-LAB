@@ -60,7 +60,7 @@ La aplicación utiliza `crm_app`, un rol PostgreSQL sin superusuario ni privileg
 
 Código: `CRM-LAB/`. Despliegue: `infra/crm-base/compose.app.yaml`. Dominio: `Caddyfile.app`. Preparación: `infra/scripts/prepare-app.sh`. Migración/provisión: `CRM-LAB/scripts/provision.mjs`. La imagen `crm-lab:0.1.0` se construyó localmente en el VPS; no se pagó un registry ni un servicio de build. El piloto de 1 vCPU/4 GB necesita medición antes de aumentar carga.
 
-Para aplicar una nueva versión: revisar el diff; hacer y verificar una copia; construir con tag nuevo; migrar con el script revisado; actualizar la referencia de app y worker; validar Compose y ejecutar `docker compose -f compose.yaml -f compose.app.yaml up -d --wait`. Probar HTTPS, inicio de sesión y un recorrido comercial. Conservar imagen y esquema compatibles para volver atrás. No restaurar una base antigua como sustituto de un rollback sin evaluar la pérdida de cambios.
+Para aplicar una nueva versión: revisar el diff; hacer y verificar una copia; construir con tag nuevo; migrar con el script revisado; actualizar la referencia de app y worker; validar Compose y ejecutar `docker compose -f compose.yaml -f compose.app.yaml up -d --wait`. Probar HTTPS, inicio de sesión y un recorrido comercial. Conservar imagen y esquema compatibles para volver atrás. No restaurar una base antigua como sustituto de un rollback sin evaluar la pérdida de cambios. El procedimiento detallado para el deploy del agente de Kapso, con secretos, verificaciones y rollback, está en [11-despliegue-agente-kapso.md](./11-despliegue-agente-kapso.md).
 
 ## Copias y recuperación
 

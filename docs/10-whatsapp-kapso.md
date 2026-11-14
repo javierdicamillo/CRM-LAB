@@ -1,9 +1,12 @@
 # WhatsApp con Kapso — estado, decisiones y traspaso
 
-13 de noviembre de 2026 · Branch `whatsapp` · Commit `eae419f` · **Sin desplegar**
+13 de noviembre de 2026 · Branch `whatsapp` · Commit `8cd65c0` · **Sin desplegar**
 
 Documento de traspaso: resume qué se hizo, por qué, qué se verificó y qué falta.
 Sirve para retomar el trabajo en otra sesión sin reconstruir el contexto.
+
+> Despliegue en producción: pasos, secretos, verificaciones y rollback en
+> [`11-despliegue-agente-kapso.md`](./11-despliegue-agente-kapso.md).
 
 ---
 

@@ -102,7 +102,7 @@ function locationLabel(property: any): string {
     .join(', ');
 }
 
-async function contactByPhone(client: Queryable, phone: string): Promise<any | null> {
+export async function contactByPhone(client: Queryable, phone: string): Promise<any | null> {
   const digits = phoneDigits(phone);
   if (digits.length < 8) return null;
   const exact = await client.query(
@@ -124,6 +124,37 @@ async function contactByPhone(client: Queryable, phone: string): Promise<any | n
 
 export async function findContactByPhone(phone: string): Promise<any | null> {
   return contactByPhone(pool, phone);
+}
+
+// Una solicitud de visita siempre se registra como actividad `visit` con la
+// misma forma, venga del webhook de WhatsApp o del agente.
+export async function createVisitActivity(
+  client: Queryable,
+  input: {
+    contactId: string;
+    propertyId: string;
+    opportunityId?: string;
+    assigneeId: string;
+    title: string;
+    notes: string;
+  },
+): Promise<string> {
+  const id = randomUUID();
+  await client.query("INSERT INTO records(id,kind,data) VALUES($1,'activity',$2)", [
+    id,
+    JSON.stringify({
+      title: input.title,
+      type: 'visit',
+      dueAt: new Date().toISOString(),
+      done: false,
+      contactId: input.contactId,
+      propertyId: input.propertyId,
+      opportunityId: input.opportunityId ?? '',
+      assigneeId: input.assigneeId,
+      notes: input.notes,
+    }),
+  ]);
+  return id;
 }
 
 // Un número desconocido que escribe por WhatsApp se da de alta como contacto.
@@ -238,24 +269,16 @@ export async function applyLeadActions(
         ? (await client.query("SELECT data FROM records WHERE id=$1 AND kind='property'", [context.propertyId])).rows[0]
         : null;
       // La fecha pedida queda en las notas; la actividad vence ahora para que el agente la vea.
-      const dueAt = new Date().toISOString();
-      const title = property?.data?.title
-        ? `Visita solicitada · ${property.data.title}`
-        : `Visita solicitada · ${lead.name}`;
-      await client.query("INSERT INTO records(id,kind,data) VALUES($1,'activity',$2)", [
-        randomUUID(),
-        JSON.stringify({
-          title,
-          type: 'visit',
-          dueAt,
-          done: false,
-          contactId: lead.id,
-          propertyId: context.propertyId ?? '',
-          opportunityId: context.opportunityId ?? '',
-          assigneeId: property?.data?.assigneeId ?? contact.data?.assigneeId ?? '',
-          notes: `Solicitud recibida por WhatsApp. El cliente escribió: "${action.text}"`,
-        }),
-      ]);
+      await createVisitActivity(client, {
+        contactId: lead.id,
+        propertyId: context.propertyId ?? '',
+        opportunityId: context.opportunityId ?? '',
+        assigneeId: property?.data?.assigneeId ?? contact.data?.assigneeId ?? '',
+        title: property?.data?.title
+          ? `Visita solicitada · ${property.data.title}`
+          : `Visita solicitada · ${lead.name}`,
+        notes: `Solicitud recibida por WhatsApp. El cliente escribió: "${action.text}"`,
+      });
       await client.query('UPDATE records SET data=$2, version=version+1, updated_at=now() WHERE id=$1', [
         lead.id,
         JSON.stringify({ ...contact.data, whatsappPending: '' }),

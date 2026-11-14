@@ -114,6 +114,7 @@ Variables en `CRM-LAB/.env.local` (no versionado):
 - `KAPSO_WEBHOOK_SECRET` — **provisorio**; debe reemplazarse por el `secret_key` real que devuelva Kapso al crear el webhook.
 - `TEST_PHONE_NUMBER="541167062068"`, `META_PHONE_NUMBER="15557818580"`
 - `CATALOG_TOKEN` — token Bearer de `GET /catalog` para el agente de Kapso.
+- `AGENT_TOKEN` — token Bearer de `POST /agent/leads`, la escritura del agente (contacto, resumen y visita). No reutilizar el token de lectura.
 - `PORTAL_URL`, `PORTAL_TOKEN`, `PORTAL_INSTANCE_ID` — **vacías** (sincronización portal→CRM sin configurar).
 
 `PORTAL-LAB/.env.local` **no existe** todavía.
@@ -220,7 +221,7 @@ npx cloudflared tunnel --url http://127.0.0.1:3000
 ## 10. Riesgos y advertencias
 
 - **Doble respondedor**: el workflow `Respuesta basica` de Kapso está activo con trigger `inbound_message` sobre el número de producción `1404393919431625` y responde solo (`auto_send_assistant_text`). Si el CRM también encola la respuesta de Katy, el cliente recibe dos mensajes. Decisión: **responde el workflow**; el CRM registra, sincroniza y aplica acciones con `WHATSAPP_AUTOREPLY=off`. Sin ese flag, el webhook encola la respuesta de Katy.
-- **Agente sin herramienta registrada**: el prompt del workflow pide "usar la herramienta de búsqueda" y el CRM ya expone `GET /catalog`, pero el agente sigue sin `flow_agent_function_tools`. Falta registrar la función apuntando a `https://<crm>/catalog` con `Authorization: Bearer $CATALOG_TOKEN`; hasta entonces debe responder que no tiene el dato.
+- **Agente sin herramienta registrada**: el prompt del workflow pide "usar la herramienta de búsqueda" y el CRM ya expone `GET /catalog`, pero el agente sigue sin `flow_agent_function_tools`. Faltan registrar dos funciones: `search_catalog` (`GET https://open-crm.tech/catalog`, `Authorization: Bearer $CATALOG_TOKEN`) y `save_lead` (`POST https://open-crm.tech/agent/leads`, `Authorization: Bearer $AGENT_TOKEN`). El prompt y el contrato de ambas están en `CRM-LAB/agent/kapso-agent-prompt.md`. Hasta entonces debe responder que no tiene el dato.
 - **Envío desde producción bloqueado**: el número devuelve `#131037 WhatsApp provided number needs display name approval before message can be sent`. Hasta aprobar el display name, el CRM no puede enviar desde ese número.
 - **Número de prueba de Meta**: `+1 555-781-8580` solo permite escribir a números autorizados. Para clientes reales hace falta un número verificado.
 - **Ventana de 24 h**: sin plantillas aprobadas no se puede iniciar una conversación. Por eso el CTA `wa.me` del portal (el cliente inicia) es la pieza clave.

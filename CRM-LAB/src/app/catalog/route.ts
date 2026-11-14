@@ -15,6 +15,8 @@ export async function GET(request: Request) {
     const result = await searchCatalog(catalogParams(new URL(request.url).searchParams));
     return Response.json(result, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
-    return failure(error);
+    const response = failure(error);
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
   }
 }
